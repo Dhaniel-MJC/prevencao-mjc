@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef, useMemo } from "react";
+import { useState, useEffect, useRef, useMemo, lazy, Suspense } from "react";
 import {
   Check,
   AlertTriangle,
@@ -15,8 +15,11 @@ import {
   Send,
   CloudOff,
   CheckCircle2,
+  LayoutDashboard,
 } from "lucide-react";
 import { SHEETS_ENDPOINT } from "./config";
+
+const Dashboard = lazy(() => import("./Dashboard"));
 
 // ————————————————————————————————————————————————————————————————
 // Paleta — "prancheta de campo": papel técnico frio, estrutura em azul
@@ -24,7 +27,7 @@ import { SHEETS_ENDPOINT } from "./config";
 // status (verde / âmbar / vermelho) que espelha literalmente as
 // respostas Atende / Parcial / Não atende.
 // ————————————————————————————————————————————————————————————————
-const C = {
+export const C = {
   page: "#E7E9E2",
   paper: "#FFFFFF",
   paperAlt: "#F2F3EE",
@@ -45,7 +48,7 @@ const C = {
   redBg: "#F5E4E1",
 };
 
-const STATUS = {
+export const STATUS = {
   ATENDE: "atende",
   PARCIAL: "parcial",
   NAO_ATENDE: "nao_atende",
@@ -514,6 +517,7 @@ export default function PrevencaoMJC() {
   const [respostas, setRespostas] = useState(initial.respostas || {}); // { "nr1:1.1:0": { status, obs } }
   const [notasGerais, setNotasGerais] = useState(initial.notasGerais || {}); // { nr1: "apontamentos..." }
   const [selectedNR, setSelectedNR] = useState(NRS[0].id);
+  const [view, setView] = useState("inspecao"); // inspecao | dashboard
   const [envioStatus, setEnvioStatus] = useState("idle"); // idle | enviando | sucesso | erro
   const [filaPendente, setFilaPendente] = useState(() => loadLocal(QUEUE_KEY, []));
   const saveTimer = useRef(null);
@@ -760,6 +764,40 @@ export default function PrevencaoMJC() {
         </div>
       </header>
 
+      <nav style={{ background: C.paper, borderBottom: `1px solid ${C.line}` }}>
+        <div className="max-w-6xl mx-auto px-5 flex gap-1">
+          {[
+            { id: "inspecao", label: "Inspeção", Icon: ClipboardList },
+            { id: "dashboard", label: "Dashboard", Icon: LayoutDashboard },
+          ].map(({ id, label, Icon }) => (
+            <button
+              key={id}
+              onClick={() => setView(id)}
+              className="mjc-switch-btn flex items-center gap-1.5 px-3.5 py-2.5 text-[13px]"
+              style={{
+                fontWeight: 600,
+                color: view === id ? C.navy : C.inkMuted,
+                borderBottom: view === id ? `2px solid ${C.orange}` : "2px solid transparent",
+              }}
+            >
+              <Icon size={14} /> {label}
+            </button>
+          ))}
+        </div>
+      </nav>
+
+      {view === "dashboard" ? (
+        <Suspense
+          fallback={
+            <div className="max-w-6xl mx-auto px-5 py-10 text-center" style={{ color: C.inkMuted }}>
+              <Loader2 size={20} className="animate-spin inline-block mr-2" />
+              Carregando dashboard…
+            </div>
+          }
+        >
+          <Dashboard />
+        </Suspense>
+      ) : (
       <div className="max-w-6xl mx-auto px-5 py-6">
         {/* Ficha da inspeção */}
         <section
@@ -949,6 +987,7 @@ export default function PrevencaoMJC() {
           riscos específicos de cada empresa e a redação vigente de cada Norma Regulamentadora.
         </p>
       </div>
+      )}
     </div>
   );
 }

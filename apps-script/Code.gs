@@ -81,9 +81,43 @@ function doPost(e) {
   return ContentService.createTextOutput(JSON.stringify(resposta)).setMimeType(ContentService.MimeType.JSON);
 }
 
-// Permite abrir a URL no navegador só para conferir se o endpoint está ativo.
+// Permite abrir a URL no navegador só para conferir se o endpoint está ativo,
+// e serve os dados da planilha (JSON) para o dashboard do administrador
+// quando chamado com ?action=dados&token=... (token configurado em
+// Configurações do projeto > Propriedades do script > READ_TOKEN).
 function doGet(e) {
+  if (e.parameter.action === "dados") {
+    return responderDados_(e);
+  }
   return ContentService.createTextOutput(
     "Endpoint do Prevenção MJC está ativo. Use POST para enviar inspeções."
   ).setMimeType(ContentService.MimeType.TEXT);
+}
+
+function responderDados_(e) {
+  var tokenEsperado = PropertiesService.getScriptProperties().getProperty("READ_TOKEN");
+  if (!tokenEsperado || e.parameter.token !== tokenEsperado) {
+    return ContentService.createTextOutput(
+      JSON.stringify({ ok: false, erro: "não autorizado" })
+    ).setMimeType(ContentService.MimeType.JSON);
+  }
+
+  var aba = getOuCriaAba_();
+  var ultimaLinha = aba.getLastRow();
+  var rows = [];
+  if (ultimaLinha > 1) {
+    var valores = aba.getRange(2, 1, ultimaLinha - 1, CABECALHO.length).getValues();
+    rows = valores.map(function (linha) {
+      var obj = {};
+      CABECALHO.forEach(function (nomeCampo, i) {
+        var valor = linha[i];
+        obj[nomeCampo] = valor instanceof Date ? valor.toISOString() : valor;
+      });
+      return obj;
+    });
+  }
+
+  return ContentService.createTextOutput(
+    JSON.stringify({ ok: true, rows: rows })
+  ).setMimeType(ContentService.MimeType.JSON);
 }

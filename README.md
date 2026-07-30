@@ -96,9 +96,37 @@ Isso já permite montar tabelas dinâmicas e gráficos direto no Google Sheets
 (ex.: contagem de "Não atende" por empresa, % de conformidade por NR, etc.)
 enquanto o dashboard definitivo dentro do próprio app não é construído.
 
+## Passo 6 — Dashboard do administrador
+
+O app tem uma aba **Dashboard** que lê os dados consolidados direto da
+planilha (conformidade por NR, ranking de empresas com mais "Não atende",
+histórico de inspeções). Como o Apps Script não devolve cabeçalhos CORS, a
+leitura passa por uma função serverless da própria Vercel
+(`api/dashboard.js`), que busca os dados no Apps Script pelo servidor e
+protege o acesso com uma senha.
+
+**Configuração (uma vez só):**
+
+1. No editor do Apps Script, vá em **⚙️ Configurações do projeto** →
+   **Propriedades do script** → **Adicionar propriedade do script**:
+   - Propriedade: `READ_TOKEN`
+   - Valor: uma string aleatória longa (é um segredo — não reaproveite senha
+     de outro lugar).
+2. Reimplante o Apps Script (**Implantar → Gerenciar implantações** → editar
+   a implantação ativa → **Nova versão**) depois de colar o `Code.gs`
+   atualizado.
+3. Na Vercel, configure 3 variáveis de ambiente do projeto
+   (Settings → Environment Variables):
+   - `DASHBOARD_PASSWORD` — a senha que os administradores vão digitar no app.
+   - `SHEETS_ENDPOINT` — a mesma URL usada em `src/config.js`.
+   - `SHEETS_READ_TOKEN` — o mesmo valor colado em `READ_TOKEN` no passo 1.
+4. Redeploy do projeto na Vercel para essas variáveis entrarem em vigor.
+
+A senha e o token nunca ficam no código-fonte nem no bundle que roda no
+navegador — só existem como variáveis de ambiente do servidor.
+
 ## Próximos passos possíveis
 
-- Autenticação (login) separando visão de administrador e de técnico.
-- Dashboard dentro do próprio app, lendo os dados da planilha (ou já migrando
-  para Firebase, se o volume de inspeções crescer).
+- Autenticação (login) por usuário, em vez de senha única compartilhada.
 - Geração de PDF do relatório de inspeção.
+- Filtros por empresa/período no dashboard.
