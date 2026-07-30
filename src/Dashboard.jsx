@@ -10,6 +10,12 @@ function nrOrder(nrNumero) {
   return m ? parseInt(m[1], 10) : 999;
 }
 
+function formatarData(valor) {
+  if (!valor) return "—";
+  const d = new Date(valor);
+  return isNaN(d) ? valor : d.toLocaleDateString("pt-BR", { timeZone: "UTC" });
+}
+
 // Todas as linhas de um mesmo envio compartilham o mesmo "recebido_em"
 // (gravado uma única vez por chamada de doPost), então isso serve como
 // identificador de uma inspeção inteira.
@@ -305,7 +311,7 @@ export default function Dashboard() {
                       {e.inspetor || "—"}
                     </td>
                     <td className="py-2 pr-3 mjc-mono" style={{ color: C.inkMuted }}>
-                      {e.dataInspecao || "—"}
+                      {formatarData(e.dataInspecao)}
                     </td>
                     <td className="py-2 pr-2 text-center mjc-mono" style={{ color: C.green, fontWeight: 700 }}>
                       {e.atende}

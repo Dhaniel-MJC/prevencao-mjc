@@ -30,6 +30,17 @@ function base64url(input) {
   return Buffer.from(input).toString("base64").replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
 }
 
+// O Sheets guarda datas como número de série (dias desde 1899-12-30). Como
+// pedimos valueRenderOption=UNFORMATTED_VALUE (para não perder a hora exata
+// de "recebido_em", que identifica cada envio), colunas de data voltam como
+// number em vez de string — convertemos de volta para um horário real aqui.
+function serialParaISO(serial) {
+  const dias = Math.floor(serial);
+  const fracaoDia = serial - dias;
+  const ms = Date.UTC(1899, 11, 30) + dias * 86400000 + Math.round(fracaoDia * 86400000);
+  return new Date(ms).toISOString();
+}
+
 async function getAccessToken(clientEmail, privateKey) {
   const header = { alg: "RS256", typ: "JWT" };
   const now = Math.floor(Date.now() / 1000);
@@ -79,7 +90,7 @@ export default async function handler(req, res) {
     const privateKey = GOOGLE_PRIVATE_KEY.replace(/\\n/g, "\n");
     const accessToken = await getAccessToken(GOOGLE_SERVICE_ACCOUNT_EMAIL, privateKey);
 
-    const url = `https://sheets.googleapis.com/v4/spreadsheets/${GOOGLE_SHEET_ID}/values/${encodeURIComponent(SHEET_RANGE)}`;
+    const url = `https://sheets.googleapis.com/v4/spreadsheets/${GOOGLE_SHEET_ID}/values/${encodeURIComponent(SHEET_RANGE)}?valueRenderOption=UNFORMATTED_VALUE`;
     const resp = await fetch(url, { headers: { Authorization: `Bearer ${accessToken}` } });
     const data = await resp.json();
 
@@ -91,7 +102,11 @@ export default async function handler(req, res) {
     const rows = (data.values || []).map((linha) => {
       const obj = {};
       COLUMNS.forEach((col, i) => {
-        obj[col] = linha[i] ?? "";
+        let valor = linha[i] ?? "";
+        if ((col === "recebido_em" || col === "data_inspecao") && typeof valor === "number") {
+          valor = serialParaISO(valor);
+        }
+        obj[col] = valor;
       });
       return obj;
     });
