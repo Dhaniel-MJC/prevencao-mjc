@@ -1,7 +1,8 @@
 import { useState, useEffect, useMemo } from "react";
-import { Lock, RefreshCw, AlertTriangle, Building2, MapPin } from "lucide-react";
+import { Lock, RefreshCw, AlertTriangle, Building2, MapPin, KeyRound, CheckCircle2 } from "lucide-react";
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Cell } from "recharts";
 import { C, STATUS } from "./App";
+import { SHEETS_ENDPOINT } from "./config";
 
 const AUTH_KEY = "mjc-dashboard-auth";
 
@@ -85,6 +86,59 @@ export default function Dashboard() {
     e.preventDefault();
     if (!pass.trim()) return;
     carregar(pass);
+  }
+
+  const [mostrarTrocaSenha, setMostrarTrocaSenha] = useState(false);
+  const [senhaAtualInput, setSenhaAtualInput] = useState("");
+  const [novaSenhaInput, setNovaSenhaInput] = useState("");
+  const [confirmSenhaInput, setConfirmSenhaInput] = useState("");
+  const [trocandoSenha, setTrocandoSenha] = useState(false);
+  const [senhaTrocaMsg, setSenhaTrocaMsg] = useState(null); // { tipo: "sucesso" | "erro", texto }
+
+  async function trocarSenha(e) {
+    e.preventDefault();
+    setSenhaTrocaMsg(null);
+
+    if (novaSenhaInput.length < 4) {
+      setSenhaTrocaMsg({ tipo: "erro", texto: "A nova senha precisa ter pelo menos 4 caracteres." });
+      return;
+    }
+    if (novaSenhaInput !== confirmSenhaInput) {
+      setSenhaTrocaMsg({ tipo: "erro", texto: "As senhas novas não coincidem." });
+      return;
+    }
+
+    setTrocandoSenha(true);
+    try {
+      // mode: "no-cors" impede ler a resposta direto (mesma limitação do
+      // envio de inspeções), então confirmamos o resultado tentando logar
+      // com a senha nova logo em seguida.
+      await fetch(SHEETS_ENDPOINT, {
+        method: "POST",
+        mode: "no-cors",
+        headers: { "Content-Type": "text/plain;charset=utf-8" },
+        body: JSON.stringify({ action: "trocarSenha", senhaAtual: senhaAtualInput, novaSenha: novaSenhaInput }),
+      });
+
+      await new Promise((r) => setTimeout(r, 1500));
+
+      const resp = await fetch(`/api/dashboard?pass=${encodeURIComponent(novaSenhaInput)}`);
+      const data = await resp.json();
+
+      if (resp.ok && data.ok) {
+        sessionStorage.setItem(AUTH_KEY, novaSenhaInput);
+        setSenhaTrocaMsg({ tipo: "sucesso", texto: "Senha alterada com sucesso." });
+        setSenhaAtualInput("");
+        setNovaSenhaInput("");
+        setConfirmSenhaInput("");
+      } else {
+        setSenhaTrocaMsg({ tipo: "erro", texto: "Não foi possível confirmar a troca — verifique a senha atual." });
+      }
+    } catch (e) {
+      setSenhaTrocaMsg({ tipo: "erro", texto: "Falha de conexão. Tente novamente." });
+    } finally {
+      setTrocandoSenha(false);
+    }
   }
 
   const envios = useMemo(() => (rows ? agruparEnvios(rows) : []), [rows]);
@@ -208,15 +262,89 @@ export default function Dashboard() {
         <h2 className="mjc-display text-lg" style={{ color: C.navy, fontWeight: 600 }}>
           Dashboard — dados consolidados
         </h2>
-        <button
-          onClick={() => carregar(sessionStorage.getItem(AUTH_KEY))}
-          disabled={loading}
-          className="flex items-center gap-1.5 text-[12.5px] px-3 py-1.5 rounded"
-          style={{ border: `1px solid ${C.line}`, color: C.inkMuted }}
-        >
-          <RefreshCw size={13} className={loading ? "animate-spin" : ""} /> Atualizar
-        </button>
+        <div className="flex items-center gap-2">
+          <button
+            onClick={() => setMostrarTrocaSenha((v) => !v)}
+            className="flex items-center gap-1.5 text-[12.5px] px-3 py-1.5 rounded"
+            style={{ border: `1px solid ${C.line}`, color: C.inkMuted }}
+          >
+            <KeyRound size={13} /> Trocar senha
+          </button>
+          <button
+            onClick={() => carregar(sessionStorage.getItem(AUTH_KEY))}
+            disabled={loading}
+            className="flex items-center gap-1.5 text-[12.5px] px-3 py-1.5 rounded"
+            style={{ border: `1px solid ${C.line}`, color: C.inkMuted }}
+          >
+            <RefreshCw size={13} className={loading ? "animate-spin" : ""} /> Atualizar
+          </button>
+        </div>
       </div>
+
+      {mostrarTrocaSenha && (
+        <section style={{ background: C.paper, border: `1px solid ${C.line}`, borderRadius: 8 }} className="p-4 md:p-5 mb-6">
+          <h3 className="mjc-display text-[13px] uppercase tracking-wider mb-3" style={{ color: C.navy, fontWeight: 600 }}>
+            Trocar senha do dashboard
+          </h3>
+          <form onSubmit={trocarSenha} className="grid grid-cols-1 sm:grid-cols-3 gap-3 items-end">
+            <label className="flex flex-col gap-1">
+              <span className="text-[10px] uppercase tracking-wider" style={{ color: C.inkMuted, fontWeight: 600 }}>
+                Senha atual
+              </span>
+              <input
+                type="password"
+                value={senhaAtualInput}
+                onChange={(e) => setSenhaAtualInput(e.target.value)}
+                className="mjc-input text-[13px] px-2.5 py-2 rounded"
+                style={{ border: `1px solid ${C.line}`, background: C.paperAlt, color: C.ink }}
+              />
+            </label>
+            <label className="flex flex-col gap-1">
+              <span className="text-[10px] uppercase tracking-wider" style={{ color: C.inkMuted, fontWeight: 600 }}>
+                Nova senha
+              </span>
+              <input
+                type="password"
+                value={novaSenhaInput}
+                onChange={(e) => setNovaSenhaInput(e.target.value)}
+                className="mjc-input text-[13px] px-2.5 py-2 rounded"
+                style={{ border: `1px solid ${C.line}`, background: C.paperAlt, color: C.ink }}
+              />
+            </label>
+            <label className="flex flex-col gap-1">
+              <span className="text-[10px] uppercase tracking-wider" style={{ color: C.inkMuted, fontWeight: 600 }}>
+                Confirmar nova senha
+              </span>
+              <input
+                type="password"
+                value={confirmSenhaInput}
+                onChange={(e) => setConfirmSenhaInput(e.target.value)}
+                className="mjc-input text-[13px] px-2.5 py-2 rounded"
+                style={{ border: `1px solid ${C.line}`, background: C.paperAlt, color: C.ink }}
+              />
+            </label>
+            <div className="sm:col-span-3">
+              <button
+                type="submit"
+                disabled={trocandoSenha}
+                className="text-[13px] px-4 py-2.5 rounded"
+                style={{ background: C.orange, color: "#fff", fontWeight: 600, opacity: trocandoSenha ? 0.7 : 1 }}
+              >
+                {trocandoSenha ? "Salvando…" : "Salvar nova senha"}
+              </button>
+            </div>
+          </form>
+          {senhaTrocaMsg && (
+            <p
+              className="text-[12.5px] mt-3 flex items-center gap-1.5"
+              style={{ color: senhaTrocaMsg.tipo === "sucesso" ? C.green : C.red }}
+            >
+              {senhaTrocaMsg.tipo === "sucesso" ? <CheckCircle2 size={13} /> : <AlertTriangle size={13} />}
+              {senhaTrocaMsg.texto}
+            </p>
+          )}
+        </section>
+      )}
 
       {rows && rows.length === 0 ? (
         <p className="text-[13.5px]" style={{ color: C.inkMuted }}>

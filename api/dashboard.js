@@ -11,6 +11,7 @@ import { createSign } from "node:crypto";
 // API oficial, autenticada via conta de serviço, não tem essa limitação.
 
 const SHEET_RANGE = "Inspecoes!A2:L";
+const CONFIG_RANGE = "Config!B2";
 const COLUMNS = [
   "recebido_em",
   "inspetor",
@@ -74,15 +75,14 @@ async function getAccessToken(clientEmail, privateKey) {
 export default async function handler(req, res) {
   res.setHeader("Cache-Control", "no-store");
 
+  // DASHBOARD_PASSWORD é só um valor de bootstrap: a senha "de verdade" mora
+  // na aba Config da planilha (Config!B2), para o admin poder trocá-la pelo
+  // próprio app. Enquanto essa célula estiver vazia (nunca foi trocada),
+  // caímos de volta na variável de ambiente.
   const { DASHBOARD_PASSWORD, GOOGLE_SERVICE_ACCOUNT_EMAIL, GOOGLE_PRIVATE_KEY, GOOGLE_SHEET_ID } = process.env;
 
-  if (!DASHBOARD_PASSWORD || !GOOGLE_SERVICE_ACCOUNT_EMAIL || !GOOGLE_PRIVATE_KEY || !GOOGLE_SHEET_ID) {
+  if (!GOOGLE_SERVICE_ACCOUNT_EMAIL || !GOOGLE_PRIVATE_KEY || !GOOGLE_SHEET_ID) {
     res.status(500).json({ ok: false, erro: "Servidor não configurado (variáveis de ambiente ausentes)." });
-    return;
-  }
-
-  if (req.query.pass !== DASHBOARD_PASSWORD) {
-    res.status(401).json({ ok: false, erro: "Senha incorreta." });
     return;
   }
 
@@ -90,7 +90,10 @@ export default async function handler(req, res) {
     const privateKey = GOOGLE_PRIVATE_KEY.replace(/\\n/g, "\n");
     const accessToken = await getAccessToken(GOOGLE_SERVICE_ACCOUNT_EMAIL, privateKey);
 
-    const url = `https://sheets.googleapis.com/v4/spreadsheets/${GOOGLE_SHEET_ID}/values/${encodeURIComponent(SHEET_RANGE)}?valueRenderOption=UNFORMATTED_VALUE`;
+    const url =
+      `https://sheets.googleapis.com/v4/spreadsheets/${GOOGLE_SHEET_ID}/values:batchGet` +
+      `?ranges=${encodeURIComponent(SHEET_RANGE)}&ranges=${encodeURIComponent(CONFIG_RANGE)}` +
+      `&valueRenderOption=UNFORMATTED_VALUE`;
     const resp = await fetch(url, { headers: { Authorization: `Bearer ${accessToken}` } });
     const data = await resp.json();
 
@@ -99,7 +102,16 @@ export default async function handler(req, res) {
       return;
     }
 
-    const rows = (data.values || []).map((linha) => {
+    const [inspecoesValues, configValues] = data.valueRanges.map((vr) => vr.values || []);
+    const senhaNaPlanilha = configValues?.[0]?.[0] ? String(configValues[0][0]) : "";
+    const senhaValida = senhaNaPlanilha || DASHBOARD_PASSWORD || "";
+
+    if (!senhaValida || req.query.pass !== senhaValida) {
+      res.status(401).json({ ok: false, erro: "Senha incorreta." });
+      return;
+    }
+
+    const rows = inspecoesValues.map((linha) => {
       const obj = {};
       COLUMNS.forEach((col, i) => {
         let valor = linha[i] ?? "";

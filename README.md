@@ -123,20 +123,28 @@ essa limitação.)
    `private_key`.
 3. Na planilha do Google Sheets, clique em **Compartilhar** e adicione o
    e-mail da conta de serviço (`client_email`) como **Leitor**.
-4. Na Vercel, configure 4 variáveis de ambiente do projeto
+4. Na Vercel, configure 3 variáveis de ambiente do projeto
    (Settings → Environment Variables):
-   - `DASHBOARD_PASSWORD` — a senha que os administradores vão digitar no app.
    - `GOOGLE_SERVICE_ACCOUNT_EMAIL` — o `client_email` do passo 2.
    - `GOOGLE_PRIVATE_KEY` — o `private_key` do passo 2 (cole com as quebras
      de linha; a Vercel aceita colar o valor como veio no JSON).
    - `GOOGLE_SHEET_ID` — o ID da planilha (o trecho da URL entre `/d/` e
      `/edit`).
+   - `DASHBOARD_PASSWORD` (opcional) — senha inicial usada só até a primeira
+     troca de senha feita pelo próprio app (veja abaixo). Depois disso, quem
+     manda é a aba **Config** da planilha.
 5. Redeploy do projeto na Vercel para essas variáveis entrarem em vigor.
 
-A senha e a chave da conta de serviço nunca ficam no código-fonte nem no
-bundle que roda no navegador — só existem como variáveis de ambiente do
-servidor. A conta de serviço só tem acesso de **leitura** a esta planilha
-específica (a que você compartilhou com ela), nada mais na sua conta Google.
+A chave da conta de serviço nunca fica no código-fonte nem no bundle que
+roda no navegador — só existe como variável de ambiente do servidor. A
+conta de serviço só tem acesso de **leitura** a esta planilha específica (a
+que você compartilhou com ela), nada mais na sua conta Google.
+
+**Trocar a senha do dashboard:** dentro da aba Dashboard, clique em
+"Trocar senha". A senha nova é gravada na aba **Config** (criada
+automaticamente na planilha, célula B2) — a troca é feita pelo próprio
+Apps Script (que tem acesso de escrita à planilha), sem precisar mexer em
+nada na Vercel.
 
 ## Próximos passos possíveis
 

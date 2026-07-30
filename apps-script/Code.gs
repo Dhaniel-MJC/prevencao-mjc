@@ -42,11 +42,48 @@ function getOuCriaAba_() {
   return aba;
 }
 
+var NOME_CONFIG = "Config";
+
+// Aba simples de chave/valor para configurações do app (hoje só a senha do
+// dashboard). Fica na própria planilha para o admin poder trocar a senha
+// direto pelo app, sem precisar mexer em variável de ambiente na Vercel.
+function getOuCriaConfig_() {
+  var planilha = SpreadsheetApp.getActiveSpreadsheet();
+  var aba = planilha.getSheetByName(NOME_CONFIG);
+  if (!aba) {
+    aba = planilha.insertSheet(NOME_CONFIG);
+    aba.getRange("A1:B1").setValues([["chave", "valor"]]);
+    aba.getRange("A2:B2").setValues([["senha_dashboard", ""]]);
+    aba.setFrozenRows(1);
+  }
+  return aba;
+}
+
+function getSenhaDashboard_() {
+  return String(getOuCriaConfig_().getRange("B2").getValue() || "");
+}
+
+function setSenhaDashboard_(novaSenha) {
+  getOuCriaConfig_().getRange("B2").setValue(novaSenha);
+}
+
 function doPost(e) {
   var resposta = { ok: false };
   try {
-    var aba = getOuCriaAba_();
     var dados = JSON.parse(e.postData.contents);
+
+    if (dados.action === "trocarSenha") {
+      var senhaAtualNaPlanilha = getSenhaDashboard_();
+      if (senhaAtualNaPlanilha !== "" && senhaAtualNaPlanilha !== dados.senhaAtual) {
+        resposta = { ok: false, erro: "Senha atual incorreta" };
+      } else {
+        setSenhaDashboard_(dados.novaSenha);
+        resposta = { ok: true };
+      }
+      return ContentService.createTextOutput(JSON.stringify(resposta)).setMimeType(ContentService.MimeType.JSON);
+    }
+
+    var aba = getOuCriaAba_();
     var linhas = dados.rows || [];
     var agora = new Date();
 
