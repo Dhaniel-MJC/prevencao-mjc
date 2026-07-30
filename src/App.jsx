@@ -598,14 +598,18 @@ export default function PrevencaoMJC() {
   }
 
   async function enviarPayload(payload) {
-    // O Content-Type "text/plain" evita o preflight de CORS no Apps Script.
-    const resp = await fetch(SHEETS_ENDPOINT, {
+    // mode: "no-cors" é necessário porque o Apps Script não retorna cabeçalhos
+    // CORS: com o modo padrão ("cors"), o navegador bloqueia a leitura da
+    // resposta e o fetch rejeita com "Failed to fetch" mesmo quando a
+    // requisição chega e é processada normalmente no servidor. Em "no-cors"
+    // a resposta fica opaca (não dá pra checar resp.ok), então sucesso aqui
+    // significa apenas que a requisição foi enviada sem erro de rede.
+    await fetch(SHEETS_ENDPOINT, {
       method: "POST",
+      mode: "no-cors",
       headers: { "Content-Type": "text/plain;charset=utf-8" },
       body: JSON.stringify(payload),
     });
-    if (!resp.ok) throw new Error("Resposta não-OK do servidor");
-    return resp;
   }
 
   async function enviarInspecao() {
