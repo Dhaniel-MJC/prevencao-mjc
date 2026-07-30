@@ -100,30 +100,43 @@ enquanto o dashboard definitivo dentro do próprio app não é construído.
 
 O app tem uma aba **Dashboard** que lê os dados consolidados direto da
 planilha (conformidade por NR, ranking de empresas com mais "Não atende",
-histórico de inspeções). Como o Apps Script não devolve cabeçalhos CORS, a
-leitura passa por uma função serverless da própria Vercel
-(`api/dashboard.js`), que busca os dados no Apps Script pelo servidor e
-protege o acesso com uma senha.
+histórico de inspeções). A leitura passa por uma função serverless da
+própria Vercel (`api/dashboard.js`), que autentica com uma **conta de
+serviço do Google** e lê a planilha pela Sheets API oficial — e protege o
+acesso com uma senha.
+
+(Testamos usar o próprio endpoint do Apps Script para isso, mas o Google
+redireciona chamadas feitas por servidores para uma tela de login mesmo com
+a implantação pública — por isso a leitura usa a Sheets API, que não tem
+essa limitação.)
 
 **Configuração (uma vez só):**
 
-1. No editor do Apps Script, vá em **⚙️ Configurações do projeto** →
-   **Propriedades do script** → **Adicionar propriedade do script**:
-   - Propriedade: `READ_TOKEN`
-   - Valor: uma string aleatória longa (é um segredo — não reaproveite senha
-     de outro lugar).
-2. Reimplante o Apps Script (**Implantar → Gerenciar implantações** → editar
-   a implantação ativa → **Nova versão**) depois de colar o `Code.gs`
-   atualizado.
-3. Na Vercel, configure 3 variáveis de ambiente do projeto
+1. Crie uma conta de serviço no [Google Cloud Console](https://console.cloud.google.com/):
+   - Crie um projeto (ou use um existente).
+   - Ative a **Google Sheets API** (busque por "Google Sheets API" e clique em Ativar).
+   - Em **APIs e Serviços → Credenciais → Criar credenciais → Conta de serviço**,
+     crie uma conta de serviço (não precisa conceder nenhum papel/role).
+   - Na conta de serviço criada, aba **Chaves → Adicionar chave → Criar nova
+     chave → JSON**. Isso baixa um arquivo `.json`.
+2. Abra o arquivo `.json` baixado e copie os campos `client_email` e
+   `private_key`.
+3. Na planilha do Google Sheets, clique em **Compartilhar** e adicione o
+   e-mail da conta de serviço (`client_email`) como **Leitor**.
+4. Na Vercel, configure 4 variáveis de ambiente do projeto
    (Settings → Environment Variables):
    - `DASHBOARD_PASSWORD` — a senha que os administradores vão digitar no app.
-   - `SHEETS_ENDPOINT` — a mesma URL usada em `src/config.js`.
-   - `SHEETS_READ_TOKEN` — o mesmo valor colado em `READ_TOKEN` no passo 1.
-4. Redeploy do projeto na Vercel para essas variáveis entrarem em vigor.
+   - `GOOGLE_SERVICE_ACCOUNT_EMAIL` — o `client_email` do passo 2.
+   - `GOOGLE_PRIVATE_KEY` — o `private_key` do passo 2 (cole com as quebras
+     de linha; a Vercel aceita colar o valor como veio no JSON).
+   - `GOOGLE_SHEET_ID` — o ID da planilha (o trecho da URL entre `/d/` e
+     `/edit`).
+5. Redeploy do projeto na Vercel para essas variáveis entrarem em vigor.
 
-A senha e o token nunca ficam no código-fonte nem no bundle que roda no
-navegador — só existem como variáveis de ambiente do servidor.
+A senha e a chave da conta de serviço nunca ficam no código-fonte nem no
+bundle que roda no navegador — só existem como variáveis de ambiente do
+servidor. A conta de serviço só tem acesso de **leitura** a esta planilha
+específica (a que você compartilhou com ela), nada mais na sua conta Google.
 
 ## Próximos passos possíveis
 
