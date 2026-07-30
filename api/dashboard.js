@@ -89,21 +89,37 @@ export default async function handler(req, res) {
   try {
     const privateKey = GOOGLE_PRIVATE_KEY.replace(/\\n/g, "\n");
     const accessToken = await getAccessToken(GOOGLE_SERVICE_ACCOUNT_EMAIL, privateKey);
+    const authHeader = { Authorization: `Bearer ${accessToken}` };
 
-    const url =
-      `https://sheets.googleapis.com/v4/spreadsheets/${GOOGLE_SHEET_ID}/values:batchGet` +
-      `?ranges=${encodeURIComponent(SHEET_RANGE)}&ranges=${encodeURIComponent(CONFIG_RANGE)}` +
-      `&valueRenderOption=UNFORMATTED_VALUE`;
-    const resp = await fetch(url, { headers: { Authorization: `Bearer ${accessToken}` } });
-    const data = await resp.json();
+    const inspecoesUrl =
+      `https://sheets.googleapis.com/v4/spreadsheets/${GOOGLE_SHEET_ID}/values/${encodeURIComponent(SHEET_RANGE)}` +
+      `?valueRenderOption=UNFORMATTED_VALUE`;
+    const inspecoesResp = await fetch(inspecoesUrl, { headers: authHeader });
+    const inspecoesData = await inspecoesResp.json();
 
-    if (!resp.ok) {
-      res.status(502).json({ ok: false, erro: data.error?.message || "Falha ao ler a planilha." });
+    if (!inspecoesResp.ok) {
+      res.status(502).json({ ok: false, erro: inspecoesData.error?.message || "Falha ao ler a planilha." });
       return;
     }
+    const inspecoesValues = inspecoesData.values || [];
 
-    const [inspecoesValues, configValues] = data.valueRanges.map((vr) => vr.values || []);
-    const senhaNaPlanilha = configValues?.[0]?.[0] ? String(configValues[0][0]) : "";
+    // A aba "Config" só é criada pelo Apps Script na primeira troca de
+    // senha — até lá, essa leitura falha (aba inexistente) e caímos no
+    // fallback da variável de ambiente, sem quebrar o login.
+    let senhaNaPlanilha = "";
+    try {
+      const configUrl =
+        `https://sheets.googleapis.com/v4/spreadsheets/${GOOGLE_SHEET_ID}/values/${encodeURIComponent(CONFIG_RANGE)}` +
+        `?valueRenderOption=UNFORMATTED_VALUE`;
+      const configResp = await fetch(configUrl, { headers: authHeader });
+      if (configResp.ok) {
+        const configData = await configResp.json();
+        senhaNaPlanilha = configData.values?.[0]?.[0] ? String(configData.values[0][0]) : "";
+      }
+    } catch (e) {
+      // aba Config ainda não existe — segue com o fallback
+    }
+
     const senhaValida = senhaNaPlanilha || DASHBOARD_PASSWORD || "";
 
     if (!senhaValida || req.query.pass !== senhaValida) {
