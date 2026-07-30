@@ -1,5 +1,5 @@
 import { useState, useEffect, useMemo } from "react";
-import { Lock, RefreshCw, AlertTriangle, Building2 } from "lucide-react";
+import { Lock, RefreshCw, AlertTriangle, Building2, MapPin } from "lucide-react";
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Cell } from "recharts";
 import { C, STATUS } from "./App";
 
@@ -140,6 +140,21 @@ export default function Dashboard() {
       .slice(0, 10);
   }, [itensRows]);
 
+  const rankingSetores = useMemo(() => {
+    const map = new Map();
+    for (const r of itensRows) {
+      const key = r.unidade || "Sem setor";
+      if (!map.has(key)) map.set(key, { nome: key, naoAtende: 0, total: 0 });
+      const e = map.get(key);
+      e.total++;
+      if (r.status === STATUS.NAO_ATENDE) e.naoAtende++;
+    }
+    return Array.from(map.values())
+      .filter((e) => e.naoAtende > 0)
+      .sort((a, b) => b.naoAtende - a.naoAtende)
+      .slice(0, 10);
+  }, [itensRows]);
+
   const recentes = envios.slice(0, 10);
 
   if (!authed) {
@@ -268,6 +283,43 @@ export default function Dashboard() {
                       <div
                         style={{
                           width: `${Math.min(100, (e.naoAtende / rankingEmpresas[0].naoAtende) * 100)}%`,
+                          background: C.red,
+                          height: "100%",
+                        }}
+                      />
+                    </div>
+                    <span className="mjc-mono text-[12px] w-6 text-right" style={{ color: C.red, fontWeight: 700 }}>
+                      {e.naoAtende}
+                    </span>
+                  </div>
+                ))}
+              </div>
+            )}
+          </section>
+
+          <section style={{ background: C.paper, border: `1px solid ${C.line}`, borderRadius: 8 }} className="p-4 md:p-5 mb-6">
+            <h3 className="mjc-display text-[13px] uppercase tracking-wider mb-3" style={{ color: C.navy, fontWeight: 600 }}>
+              Setores com mais itens "Não atende"
+            </h3>
+            {rankingSetores.length === 0 ? (
+              <p className="text-[13px]" style={{ color: C.inkMuted }}>
+                Nenhum item "Não atende" registrado ainda.
+              </p>
+            ) : (
+              <div className="flex flex-col gap-2">
+                {rankingSetores.map((e) => (
+                  <div key={e.nome} className="flex items-center gap-3">
+                    <div
+                      className="flex items-center gap-1.5 text-[12.5px] w-52 shrink-0 truncate"
+                      style={{ color: C.ink }}
+                      title={e.nome}
+                    >
+                      <MapPin size={12} style={{ color: C.inkFaint }} /> {e.nome}
+                    </div>
+                    <div className="flex-1 h-4 rounded overflow-hidden" style={{ background: C.paperAlt }}>
+                      <div
+                        style={{
+                          width: `${Math.min(100, (e.naoAtende / rankingSetores[0].naoAtende) * 100)}%`,
                           background: C.red,
                           height: "100%",
                         }}
