@@ -817,52 +817,6 @@ export default function PrevencaoMJC() {
           </div>
         </section>
 
-        {/* Envio para o administrador */}
-        <section
-          style={{ background: C.paper, border: `1px solid ${C.line}`, borderRadius: 8 }}
-          className="p-4 md:p-5 mb-5 flex flex-col sm:flex-row sm:items-center gap-3 sm:justify-between"
-        >
-          <div className="flex items-start gap-2.5">
-            {envioStatus === "sucesso" ? (
-              <CheckCircle2 size={18} color={C.green} className="shrink-0 mt-0.5" />
-            ) : filaPendente.length > 0 ? (
-              <CloudOff size={18} color={C.amber} className="shrink-0 mt-0.5" />
-            ) : (
-              <Send size={18} color={C.navy} className="shrink-0 mt-0.5" />
-            )}
-            <div>
-              <div className="text-[13px]" style={{ color: C.ink, fontWeight: 600 }}>
-                {envioStatus === "sucesso"
-                  ? "Inspeção enviada ao administrador"
-                  : envioStatus === "erro"
-                  ? "Sem conexão — ficou salvo para reenvio automático"
-                  : "Envie os resultados para o administrador"}
-              </div>
-              <div className="text-[11.5px]" style={{ color: C.inkMuted }}>
-                {filaPendente.length > 0
-                  ? `${filaPendente.length} envio(s) pendente(s) — serão reenviados automaticamente quando houver conexão.`
-                  : "Os dados vão direto para a planilha do administrador, sem custo de nuvem."}
-              </div>
-            </div>
-          </div>
-          <button
-            onClick={enviarInspecao}
-            disabled={envioStatus === "enviando"}
-            className="flex items-center justify-center gap-2 text-[13px] px-4 py-2.5 rounded shrink-0"
-            style={{ background: C.orange, color: "#fff", fontWeight: 600, opacity: envioStatus === "enviando" ? 0.7 : 1 }}
-          >
-            {envioStatus === "enviando" ? (
-              <>
-                <Loader2 size={14} className="animate-spin" /> Enviando…
-              </>
-            ) : (
-              <>
-                <Send size={14} /> Enviar inspeção
-              </>
-            )}
-          </button>
-        </section>
-
         {/* Resumo geral */}
         <section className="grid grid-cols-2 sm:grid-cols-5 gap-3 mb-5">
           <SummaryCard label="Itens" value={overall.total} color={C.navy} />
@@ -981,6 +935,52 @@ export default function PrevencaoMJC() {
             </label>
           </div>
         </main>
+
+        {/* Envio para o administrador */}
+        <section
+          style={{ background: C.paper, border: `1px solid ${C.line}`, borderRadius: 8 }}
+          className="p-4 md:p-5 mt-5 flex flex-col sm:flex-row sm:items-center gap-3 sm:justify-between"
+        >
+          <div className="flex items-start gap-2.5">
+            {envioStatus === "sucesso" ? (
+              <CheckCircle2 size={18} color={C.green} className="shrink-0 mt-0.5" />
+            ) : filaPendente.length > 0 ? (
+              <CloudOff size={18} color={C.amber} className="shrink-0 mt-0.5" />
+            ) : (
+              <Send size={18} color={C.navy} className="shrink-0 mt-0.5" />
+            )}
+            <div>
+              <div className="text-[13px]" style={{ color: C.ink, fontWeight: 600 }}>
+                {envioStatus === "sucesso"
+                  ? "Inspeção enviada ao administrador"
+                  : envioStatus === "erro"
+                  ? "Sem conexão — ficou salvo para reenvio automático"
+                  : "Envie os resultados para o administrador"}
+              </div>
+              <div className="text-[11.5px]" style={{ color: C.inkMuted }}>
+                {filaPendente.length > 0
+                  ? `${filaPendente.length} envio(s) pendente(s) — serão reenviados automaticamente quando houver conexão.`
+                  : "Os dados vão direto para a planilha do administrador, sem custo de nuvem."}
+              </div>
+            </div>
+          </div>
+          <button
+            onClick={enviarInspecao}
+            disabled={envioStatus === "enviando"}
+            className="flex items-center justify-center gap-2 text-[13px] px-4 py-2.5 rounded shrink-0"
+            style={{ background: C.orange, color: "#fff", fontWeight: 600, opacity: envioStatus === "enviando" ? 0.7 : 1 }}
+          >
+            {envioStatus === "enviando" ? (
+              <>
+                <Loader2 size={14} className="animate-spin" /> Enviando…
+              </>
+            ) : (
+              <>
+                <Send size={14} /> Enviar inspeção
+              </>
+            )}
+          </button>
+        </section>
 
         <p className="text-[11px] mt-6 text-center" style={{ color: C.inkFaint }}>
           Modelo de referência geral — valide e adapte os itens de verificação conforme a atividade, o porte e os
